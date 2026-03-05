@@ -1,8 +1,11 @@
 from pathlib import Path
+import logging
+import time
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.api import auth, dashboard, drivers, fuel_sites, fuel_transactions, vehicles
 from app.core.config import get_settings
@@ -13,6 +16,7 @@ from app.web.routes import router as web_router
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name)
+logger = logging.getLogger(__name__)
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,9 +40,19 @@ app.mount("/static", StaticFiles(directory=str(app_dir / "static")), name="stati
 
 @app.on_event("startup")
 def on_startup() -> None:
-    Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
-    try:
-        seed_data(db)
-    finally:
-        db.close()
+    last_error: Exception | None = None
+    for attempt in range(1, 31):
+        db = SessionLocal()
+        try:
+            Base.metadata.create_all(bind=engine)
+            seed_data(db)
+            return
+        except (SQLAlchemyError, OSError) as exc:
+            last_error = exc
+            logger.warning("Database startup attempt %s/30 failed: %s", attempt, exc)
+            time.sleep(2)
+        finally:
+            db.close()
+
+    if last_error:
+        raise RuntimeError("Database startup failed after retries") from last_error
