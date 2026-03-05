@@ -82,6 +82,15 @@ Notes:
 - `SEED_DEMO_DATA` is set to `false` in hosted mode by default.
 - For a custom domain, add it in Render service settings.
 
+## Free Hosted Option (Good for Feedback)
+
+The included `render.yaml` is configured for free plans:
+
+- Web service: `free` (sleeps when idle, then wakes on first request)
+- PostgreSQL: `free` (short-lived trial DB, suitable for feedback/testing)
+
+This is enough for sharing with collaborators at zero cost while collecting feedback.
+
 ## Next Expansion Paths
 
 1. Add PostgreSQL + migrations (Alembic)
